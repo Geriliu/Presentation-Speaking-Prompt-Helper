@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Improv Speaking Challenge</title>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --card-back: #2c3e50;
+            --card-front: #ffffff;
+            --text-color: #333333;
+            --accent-color: #e74c3c;
+            --success-color: #2ecc71;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            color: var(--card-back);
+        }
+
+        .rules {
+            font-size: 0.95rem;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.4;
+        }
+
+        .rules strong {
+            color: var(--accent-color);
+        }
+
+        /* Card Container and Flip Mechanics */
+        .card-container {
+            perspective: 1000px;
+            width: 100%;
+            height: 220px;
+            margin-bottom: 30px;
+            cursor: pointer;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            border-radius: 12px;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            box-sizing: border-box;
+        }
+
+        .card-back {
+            background-color: var(--card-back);
+            color: white;
+            flex-direction: column;
+        }
+
+        .card-back-pattern {
+            border: 4px double rgba(255,255,255,0.2);
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .card-front {
+            background-color: var(--card-front);
+            color: var(--text-color);
+            transform: rotateY(180deg);
+            font-size: 1.3rem;
+            font-weight: 600;
+            line-height: 1.4;
+            border: 2px solid #e0e0e0;
+        }
+
+        /* Timer UI */
+        .timer-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .timer-container.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .timer-circle {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 5px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--card-back);
+            transition: border-color 0.3s, color 0.3s;
+        }
+
+        .timer-circle.running {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+
+        .timer-circle.finished {
+            border-color: var(--success-color);
+            color: var(--success-color);
+            animation: pulse 0.5s ease infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        .btn {
+            background-color: var(--card-back);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #34495e;
+        }
+
+        .btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Topic Draw Challenge</h1>
+    <p class="rules">Tap the card to reveal a topic. You must talk for 40 seconds without stopping. If you run out of things to say, say <strong>"which means..."</strong> and keep going!</p>
+
+    <div class="card-container" id="cardContainer">
+        <div class="card" id="card">
+            <div class="card-face card-back">
+                <div class="card-back-pattern">TAP TO DRAW TOPIC</div>
+            </div>
+            <div class="card-face card-front" id="topicText">
+                Topic goes here
+            </div>
+        </div>
+    </div>
+
+    <div class="timer-container" id="timerContainer">
+        <div class="timer-circle" id="timerDisplay">40</div>
+        <button class="btn" id="nextBtn" disabled>Next Topic</button>
+    </div>
+</div>
+
+<script>
+    const topics = [
+        "One good thing tourism does for a town",
+        "One bad thing tourism does for a town",
+        "What Bali was like when the beaches were empty",
+        "Why locals might feel two ways about visitors",
+        "What Everest has in common with a tourist spot",
+        "Who gains the most from tourism and who gains the least",
+        "A place you'd visit and why",
+        "Should visitors have to pay more to protect a place",
+        "What a tourist should do to be respectful",
+        "Is tourism good for everyone in a community"
+    ];
+
+    let remainingTopics = [...topics];
+    let timerInterval = null;
+    let timeLeft = 40;
+    let isFlipped = false;
+
+    const card = document.getElementById('card');
+    const cardContainer = document.getElementById('cardContainer');
+    const topicText = document.getElementById('topicText');
+    const timerContainer = document.getElementById('timerContainer');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const nextBtn = document.getElementById('nextBtn');
+
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    function startTimer() {
+        clearInterval(timerInterval);
+        timeLeft = 40;
+        timerDisplay.textContent = timeLeft;
+        timerDisplay.className = 'timer-circle running';
+        nextBtn.disabled = true;
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            timerDisplay.textContent = timeLeft;
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                timerDisplay.className = 'timer-circle finished';
+                nextBtn.disabled = false;
+            }
+        }, 1000);
+    }
+
+    function handleCardClick() {
+        if (isFlipped) return;
+
+        if (remainingTopics.length === 0) {
+            remainingTopics = [...topics];
+        }
+        
+        // Pick and remove a random topic
+        const randomIndex = Math.floor(Math.random() * remainingTopics.length);
+        const selectedTopic = remainingTopics.splice(randomIndex, 1)[0];
+        
+        topicText.textContent = selectedTopic;
+        
+        // Flip card and show timer framework
+        card.classList.add('flipped');
+        timerContainer.classList.add('visible');
+        isFlipped = true;
+
+        // Brief delay for flipping animation before timer starts
+        setTimeout(startTimer, 400);
+    }
+
+    function handleNextClick() {
+        clearInterval(timerInterval);
+        card.classList.remove('flipped');
+        timerContainer.classList.remove('visible');
+        timerDisplay.className = 'timer-circle';
+        timerDisplay.textContent = '40';
+        isFlipped = false;
+    }
+
+    // Initial shuffle
+    shuffleArray(remainingTopics);
+
+    // Event Listeners
+    cardContainer.addEventListener('click', handleCardClick);
+    nextBtn.addEventListener('click', handleNextClick);
+</script>
+
+</body>
+</html>
