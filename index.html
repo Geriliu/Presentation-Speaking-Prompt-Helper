@@ -73,12 +73,6 @@
             color: var(--card-back);
         }
 
-        .tally {
-            font-weight: 700;
-            color: var(--card-back);
-            margin: 8px 0;
-        }
-
         .stage-nav {
             display: flex;
             flex-wrap: wrap;
@@ -231,12 +225,6 @@
             border-color: #fff;
         }
 
-        .stage-bar .btn.tick.done {
-            background: var(--success-color);
-            border-color: var(--success-color);
-            color: #fff;
-        }
-
         body.card-open {
             overflow: hidden;
         }
@@ -375,12 +363,6 @@
             background: #e7ecea;
         }
 
-        .btn.tick.done {
-            background: var(--success-color);
-            border-color: var(--success-color);
-            color: white;
-        }
-
         .map {
             display: flex;
             flex-direction: column;
@@ -472,10 +454,6 @@
         <div class="sheet">
             <ol id="phraseList"></ol>
         </div>
-        <div class="timer-circle" id="phraseCircle">2:00</div>
-        <div class="actions">
-            <button type="button" class="btn" id="phraseStartBtn">Start 2 minutes</button>
-        </div>
     </section>
 
     <section id="panel-chain" hidden>
@@ -488,13 +466,8 @@
             </div>
         </div>
         <div class="deck" id="deck" aria-label="Face-down cards"></div>
-        <p class="tally" id="tally" aria-live="polite">Reason bridges: 0</p>
-        <div class="timer-circle" id="talkCircle">20</div>
         <div class="actions">
-            <button type="button" class="btn ghost tick" id="tickBtn" hidden>Tick — reason</button>
-            <button type="button" class="btn" id="startTalkBtn" hidden>Start 20 seconds</button>
             <button type="button" class="btn ghost" id="editBtn">Change the cards</button>
-            <button type="button" class="btn ghost" id="reshuffleBtn" hidden>New order</button>
         </div>
     </section>
 
@@ -557,8 +530,6 @@
     <div class="stage-bar">
         <div class="timer-circle" id="stageCircle">20</div>
         <div class="actions">
-            <button type="button" class="btn ghost tick" id="stageTick" hidden>Tick — reason</button>
-            <button type="button" class="btn" id="stageStart" hidden>Start 20 seconds</button>
             <button type="button" class="btn ghost" id="closeCardBtn">Put the card back</button>
         </div>
     </div>
@@ -567,30 +538,20 @@
 <script>
     "use strict";
 
-    const PHRASE_SECONDS = 2 * 60;
     const TALK_SECONDS = 20;
     const MAP_SECONDS = 90;
 
     const stageButtons = document.querySelectorAll(".stage-btn");
-    const phraseCircle = document.getElementById("phraseCircle");
-    const phraseStartBtn = document.getElementById("phraseStartBtn");
     const sourceBox = document.getElementById("sourceBox");
     const cardSource = document.getElementById("cardSource");
     const deck = document.getElementById("deck");
-    const tally = document.getElementById("tally");
-    const talkCircle = document.getElementById("talkCircle");
-    const tickBtn = document.getElementById("tickBtn");
-    const startTalkBtn = document.getElementById("startTalkBtn");
     const editBtn = document.getElementById("editBtn");
     const cancelEditBtn = document.getElementById("cancelEditBtn");
-    const reshuffleBtn = document.getElementById("reshuffleBtn");
     const overlay = document.getElementById("overlay");
     const stageShell = document.getElementById("stageShell");
     const stageCard = document.getElementById("stageCard");
     const stageText = document.getElementById("stageText");
     const stageCircle = document.getElementById("stageCircle");
-    const stageTick = document.getElementById("stageTick");
-    const stageStart = document.getElementById("stageStart");
     const closeCardBtn = document.getElementById("closeCardBtn");
     const mapCircle = document.getElementById("mapCircle");
     const mapStartBtn = document.getElementById("mapStartBtn");
@@ -598,22 +559,15 @@
 
     const state = {
         stage: "phrases",
-        phraseLeft: PHRASE_SECONDS,
-        phraseRunning: false,
         deck: [],
         order: [],
         seen: [],
         sourceOpen: false,
         openIndex: -1,
-        activeIndex: -1,
-        activeIsBridge: false,
         animating: false,
         closing: false,
         talkLeft: TALK_SECONDS,
         talkPhase: "idle",
-        bridgeMarked: false,
-        due: 0,
-        ticked: 0,
         mapRuns: 0
     };
 
@@ -626,12 +580,6 @@
             [array[i], array[j]] = [array[j], array[i]];
         }
         return array;
-    }
-
-    function formatTime(total) {
-        const minutes = Math.floor(total / 60);
-        const seconds = total % 60;
-        return minutes + ":" + String(seconds).padStart(2, "0");
     }
 
     function fillSelect(id, items, selectedIndex) {
@@ -705,46 +653,19 @@
             document.getElementById("panel-" + key).hidden = key !== state.stage;
         });
 
-        const phraseLeft = state.phraseLeft;
-        const phraseDone = !state.phraseRunning && phraseLeft === 0;
-        phraseCircle.textContent = formatTime(phraseLeft);
-        phraseCircle.className = "timer-circle" +
-            (state.phraseRunning && phraseLeft > 0 ? " running" : phraseDone ? " finished" : "");
-        phraseStartBtn.disabled = state.phraseRunning && phraseLeft > 0;
-        phraseStartBtn.textContent = phraseDone ? "Start again" : "Start 2 minutes";
-
         sourceBox.hidden = !state.sourceOpen;
         deck.hidden = state.sourceOpen;
         editBtn.hidden = state.sourceOpen;
         cancelEditBtn.hidden = !state.sourceOpen || state.deck.length === 0;
 
-        const faceDown = state.seen.filter((used) => !used).length;
-
-        tally.textContent = state.due === 0
-            ? "Reason bridges: 0"
-            : "Reason bridges: " + state.ticked + " / " + state.due;
-
-        const bridgeControls = state.activeIsBridge && state.activeIndex >= 0;
-        const waitingForBridge = bridgeControls && state.talkPhase === "idle";
-        const onActiveCard = state.openIndex >= 0 && state.openIndex === state.activeIndex;
-        paintTick(tickBtn, bridgeControls && state.openIndex < 0 && !state.sourceOpen);
-        paintTick(stageTick, bridgeControls && onActiveCard);
-        startTalkBtn.hidden = !(waitingForBridge && state.openIndex < 0 && !state.sourceOpen);
-        stageStart.hidden = !(waitingForBridge && onActiveCard);
-        const allTurned = state.deck.length > 0 && faceDown === 0;
-        reshuffleBtn.hidden = !(allTurned && state.openIndex < 0 && !state.sourceOpen);
-
         const talkDone = state.talkPhase === "done";
         const talkRunning = state.talkPhase === "running";
-        const chainTiming = state.stage === "chain" && state.activeIndex >= 0;
-        [talkCircle, stageCircle].forEach((circle) => {
-            circle.textContent = chainTiming && state.talkPhase !== "idle"
-                ? String(state.talkLeft)
-                : String(TALK_SECONDS);
-            circle.className = "timer-circle" +
-                (chainTiming && talkRunning ? " running" : chainTiming && talkDone ? " finished" : "");
-        });
-        talkCircle.hidden = state.sourceOpen;
+        const chainTiming = state.stage === "chain" && state.openIndex >= 0;
+        stageCircle.textContent = chainTiming && state.talkPhase !== "idle"
+            ? String(state.talkLeft)
+            : String(TALK_SECONDS);
+        stageCircle.className = "timer-circle" +
+            (chainTiming && talkRunning ? " running" : chainTiming && talkDone ? " finished" : "");
 
         const onMapTalk = state.stage === "map" && state.talkPhase !== "idle";
         mapCircle.textContent = onMapTalk ? String(state.talkLeft) : String(MAP_SECONDS);
@@ -757,14 +678,6 @@
 
         const showFix = state.mapRuns >= 1 && (state.talkPhase !== "running" || state.mapRuns >= 2);
         fixBox.hidden = !showFix;
-    }
-
-    function paintTick(button, visible) {
-        button.hidden = !visible;
-        button.disabled = false;
-        button.classList.toggle("done", state.bridgeMarked);
-        button.textContent = state.bridgeMarked ? "Ticked" : "Tick — reason";
-        button.setAttribute("aria-pressed", state.bridgeMarked ? "true" : "false");
     }
 
     function renderDeck() {
@@ -881,17 +794,9 @@
         if (state.animating || state.closing) return;
         const fromRect = fromEl.getBoundingClientRect();
         const firstTime = !state.seen[cardIndex];
-        if (firstTime) {
-            const anySeen = state.seen.some(Boolean);
-            state.seen[cardIndex] = true;
-            state.activeIndex = cardIndex;
-            state.activeIsBridge = anySeen;
-            state.bridgeMarked = false;
-            state.talkPhase = "idle";
-            state.talkLeft = TALK_SECONDS;
-            if (anySeen) state.due += 1;
-            else state.talkPhase = "running";
-        }
+        if (firstTime) state.seen[cardIndex] = true;
+        state.talkLeft = TALK_SECONDS;
+        state.talkPhase = "running";
         state.openIndex = cardIndex;
         stageText.textContent = state.deck[cardIndex];
         renderDeck();
@@ -905,9 +810,6 @@
         state.animating = false;
         state.closing = false;
         state.openIndex = -1;
-        state.activeIndex = -1;
-        state.activeIsBridge = false;
-        state.bridgeMarked = false;
         state.talkPhase = "idle";
         state.talkLeft = TALK_SECONDS;
         hideOverlay();
@@ -915,8 +817,6 @@
             state.deck = [];
             state.order = [];
             state.seen = [];
-            state.due = 0;
-            state.ticked = 0;
             state.sourceOpen = true;
             renderDeck();
             paint();
@@ -925,30 +825,10 @@
         state.deck = cards;
         state.order = shuffle(cards.map((_, index) => index));
         state.seen = cards.map(() => false);
-        state.due = 0;
-        state.ticked = 0;
         state.sourceOpen = false;
         refillSelect("point1", cards, 0);
         refillSelect("point2", cards, 1);
         refillSelect("point3", cards, Math.min(6, cards.length - 1));
-        renderDeck();
-        paint();
-    }
-
-    function newOrder() {
-        if (!state.deck.length) return;
-        motion += 1;
-        state.order = shuffle(state.deck.map((_, index) => index));
-        state.seen = state.deck.map(() => false);
-        state.openIndex = -1;
-        state.activeIndex = -1;
-        state.activeIsBridge = false;
-        state.bridgeMarked = false;
-        state.talkPhase = "idle";
-        state.talkLeft = TALK_SECONDS;
-        state.animating = false;
-        state.closing = false;
-        hideOverlay();
         renderDeck();
         paint();
     }
@@ -973,43 +853,14 @@
         paint();
     }
 
-    function onTick() {
-        if (!state.activeIsBridge) return;
-        if (state.bridgeMarked) {
-            state.bridgeMarked = false;
-            state.ticked = Math.max(0, state.ticked - 1);
-        } else {
-            state.bridgeMarked = true;
-            state.ticked += 1;
-        }
-        paint();
-    }
-
-    function onStartTalk() {
-        if (!state.activeIsBridge || state.talkPhase !== "idle") return;
-        beginTalk(TALK_SECONDS);
-    }
-
     function onMapStart() {
         if (state.talkPhase === "running") return;
         state.mapRuns += 1;
         beginTalk(MAP_SECONDS);
     }
 
-    function startPhrases() {
-        if (state.phraseRunning && state.phraseLeft > 0) return;
-        state.phraseLeft = PHRASE_SECONDS;
-        state.phraseRunning = true;
-        paint();
-    }
-
     function tickClock() {
         let changed = false;
-        if (state.stage === "phrases" && state.phraseRunning && state.phraseLeft > 0) {
-            state.phraseLeft -= 1;
-            if (state.phraseLeft === 0) state.phraseRunning = false;
-            changed = true;
-        }
         if (state.talkPhase === "running") {
             if (state.talkLeft > 0) state.talkLeft -= 1;
             if (state.talkLeft <= 0) state.talkPhase = "done";
@@ -1031,18 +882,12 @@
     cardSource.value = CARDS.join("\n");
     makeCards();
 
-    phraseStartBtn.addEventListener("click", startPhrases);
     stageButtons.forEach((button) => {
         button.addEventListener("click", () => enterStage(button.dataset.stage));
     });
     document.getElementById("makeBtn").addEventListener("click", makeCards);
     editBtn.addEventListener("click", openEditor);
     cancelEditBtn.addEventListener("click", cancelEdit);
-    tickBtn.addEventListener("click", onTick);
-    stageTick.addEventListener("click", onTick);
-    startTalkBtn.addEventListener("click", onStartTalk);
-    stageStart.addEventListener("click", onStartTalk);
-    reshuffleBtn.addEventListener("click", newOrder);
     closeCardBtn.addEventListener("click", closeCard);
     document.getElementById("overlayHit").addEventListener("click", closeCard);
     cardSource.addEventListener("keydown", (event) => {
