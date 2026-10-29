@@ -3,7 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Improv Speaking Challenge</title>
+    <title>English: practice</title>
+    <script>
+        // Lesson content. Edit this, then refresh.
+        // CARDS: one string is one face-down card, and a speech-map point.
+        var CARDS = [
+            "Work for local families",
+            "Shops shut in lockdown",
+            "A break that actually helps",
+            "Seeing something new",
+            "Traffic every day",
+            "Two prices",
+            "Holy sites as photos",
+            "Rubbish left behind"
+        ];
+
+        var PHRASES = [
+            "Not only that, but...",
+            "On the other hand...",
+            "This matters because...",
+            "That brings me to...",
+            "Just as X, Y also..."
+        ];
+
+        var MAP_START = "Should Australians stop travelling?";
+        var MAP_CLOSER = "travel better, not stop";
+    </script>
     <style>
         :root {
             --bg-color: #f4f7f6;
@@ -14,6 +39,10 @@
             --success-color: #2ecc71;
         }
 
+        [hidden] {
+            display: none !important;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
@@ -21,51 +50,205 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             min-height: 100vh;
             margin: 0;
-            padding: 20px;
+            padding: 16px 16px 28px;
             box-sizing: border-box;
         }
 
         .container {
             width: 100%;
-            max-width: 600px;
-            text-align: center;
+            max-width: 640px;
         }
 
         h1 {
-            margin-bottom: 10px;
+            margin: 0 0 12px;
+            font-size: 1.35rem;
             color: var(--card-back);
         }
 
-        .rules {
-            font-size: 0.95rem;
+        h2 {
+            margin: 0 0 8px;
+            font-size: 1rem;
+            color: var(--card-back);
+        }
+
+        .tally {
+            font-weight: 700;
+            color: var(--card-back);
+            margin: 8px 0;
+        }
+
+        .stage-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px 14px;
+            margin: 8px 0 14px;
+        }
+
+        .stage-btn {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
             color: #666;
-            margin-bottom: 30px;
-            line-height: 1.4;
-        }
-
-        .rules strong {
-            color: var(--accent-color);
-        }
-
-        /* Card Container and Flip Mechanics */
-        .card-container {
-            perspective: 1000px;
-            width: 100%;
-            height: 220px;
-            margin-bottom: 30px;
+            font: inherit;
+            font-weight: 600;
+            padding: 6px 0;
             cursor: pointer;
+        }
+
+        .stage-btn.active {
+            color: var(--card-back);
+            border-bottom-color: var(--card-back);
+        }
+
+        .sheet, .node {
+            background: var(--card-front);
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+
+        .sheet {
+            text-align: left;
+            padding: 16px 18px 6px;
+        }
+
+        .sheet ol {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+
+        .sheet li {
+            font-size: 1.2rem;
+            font-weight: 600;
+            line-height: 1.35;
+            margin-bottom: 12px;
+        }
+
+        .card-source {
+            width: 100%;
+            min-height: 180px;
+            box-sizing: border-box;
+            font: inherit;
+            font-size: 1.05rem;
+            line-height: 1.45;
+            color: var(--text-color);
+            background: var(--card-front);
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 12px 14px;
+            resize: vertical;
+        }
+
+        .deck {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+            gap: 12px;
+            margin: 12px 0 4px;
+        }
+
+        .deck[hidden] {
+            display: none;
+        }
+
+        .mini {
+            appearance: none;
+            position: relative;
+            width: 100%;
+            aspect-ratio: 5 / 7;
+            padding: 0;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .mini-back {
+            position: absolute;
+            inset: 0;
+            box-sizing: border-box;
+            background: var(--card-back);
+            border-radius: 10px;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.14);
+            padding: 7px;
+        }
+
+        .mini.used {
+            opacity: 0.5;
+        }
+
+        .mini.used .card-back-pattern::after {
+            background: rgba(255,255,255,0.55);
+        }
+
+        .overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 30;
+            background: #1c242b;
+        }
+
+        .overlay[hidden] {
+            display: none;
+        }
+
+        .overlay-hit {
+            position: absolute;
+            inset: 0;
+            border: 0;
+            padding: 0;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        .stage-shell {
+            position: fixed;
+            z-index: 2;
+            perspective: 1400px;
+        }
+
+        .stage-bar {
+            position: fixed;
+            z-index: 3;
+            left: 50%;
+            bottom: 16px;
+            transform: translateX(-50%);
+            width: min(320px, calc(100% - 32px));
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .overlay.open .stage-bar {
+            opacity: 1;
+        }
+
+        .stage-bar .timer-circle {
+            background: #fff;
+        }
+
+        .stage-bar .btn.ghost {
+            background: #fff;
+            border-color: #fff;
+        }
+
+        .stage-bar .btn.tick.done {
+            background: var(--success-color);
+            border-color: var(--success-color);
+            color: #fff;
+        }
+
+        body.card-open {
+            overflow: hidden;
         }
 
         .card {
             width: 100%;
             height: 100%;
             position: relative;
+            -webkit-transform-style: preserve-3d;
             transform-style: preserve-3d;
-            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 18px 40px rgba(0,0,0,0.28);
             border-radius: 12px;
         }
 
@@ -77,72 +260,69 @@
             position: absolute;
             width: 100%;
             height: 100%;
+            -webkit-backface-visibility: hidden;
             backface-visibility: hidden;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 24px;
+            padding: 20px;
             box-sizing: border-box;
+            text-align: center;
         }
 
         .card-back {
             background-color: var(--card-back);
             color: white;
-            flex-direction: column;
         }
 
         .card-back-pattern {
-            border: 4px double rgba(255,255,255,0.2);
+            border: 4px double rgba(255,255,255,0.28);
             width: 100%;
             height: 100%;
             border-radius: 8px;
+            box-sizing: border-box;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
-            font-weight: bold;
-            letter-spacing: 1px;
+            background:
+                repeating-linear-gradient(45deg, transparent, transparent 7px, rgba(255,255,255,0.06) 7px, rgba(255,255,255,0.06) 8px),
+                repeating-linear-gradient(-45deg, transparent, transparent 7px, rgba(255,255,255,0.06) 7px, rgba(255,255,255,0.06) 8px);
+        }
+
+        .card-back-pattern::after {
+            content: "";
+            width: 22%;
+            aspect-ratio: 1;
+            border: 3px solid rgba(255,255,255,0.45);
+            transform: rotate(45deg);
         }
 
         .card-front {
             background-color: var(--card-front);
             color: var(--text-color);
             transform: rotateY(180deg);
-            font-size: 1.3rem;
+            font-size: clamp(1.7rem, 4.6vw, 2.8rem);
             font-weight: 600;
-            line-height: 1.4;
+            line-height: 1.3;
             border: 2px solid #e0e0e0;
-        }
-
-        /* Timer UI */
-        .timer-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .timer-container.visible {
-            visibility: visible;
-            opacity: 1;
+            padding: 28px;
+            overflow-wrap: break-word;
         }
 
         .timer-circle {
-            width: 100px;
-            height: 100px;
+            width: 84px;
+            height: 84px;
+            margin: 10px auto;
             border-radius: 50%;
             border: 5px solid #e0e0e0;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
-            font-weight: bold;
+            font-size: 1.5rem;
+            font-weight: 700;
             color: var(--card-back);
-            transition: border-color 0.3s, color 0.3s;
+            font-variant-numeric: tabular-nums;
         }
 
         .timer-circle.running {
@@ -153,24 +333,26 @@
         .timer-circle.finished {
             border-color: var(--success-color);
             color: var(--success-color);
-            animation: pulse 0.5s ease infinite alternate;
         }
 
-        @keyframes pulse {
-            from { transform: scale(1); }
-            to { transform: scale(1.05); }
+        .actions {
+            width: min(100%, 320px);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .btn {
             background-color: var(--card-back);
             color: white;
-            border: none;
-            padding: 12px 24px;
+            border: 2px solid var(--card-back);
+            padding: 12px 18px;
             font-size: 1rem;
             border-radius: 6px;
             cursor: pointer;
             font-weight: 600;
-            transition: background-color 0.2s;
+            font-family: inherit;
         }
 
         .btn:hover {
@@ -179,123 +361,707 @@
 
         .btn:disabled {
             background-color: #bdc3c7;
+            border-color: #bdc3c7;
             cursor: not-allowed;
+        }
+
+        .btn.ghost {
+            background: transparent;
+            color: var(--card-back);
+            border-color: #d0d5d8;
+        }
+
+        .btn.ghost:hover {
+            background: #e7ecea;
+        }
+
+        .btn.tick.done {
+            background: var(--success-color);
+            border-color: var(--success-color);
+            color: white;
+        }
+
+        .map {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .node {
+            text-align: left;
+            padding: 8px 14px 10px;
+            box-shadow: none;
+        }
+
+        .node.bridge {
+            background: transparent;
+            border-style: dashed;
+            box-shadow: none;
+        }
+
+        .node label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--card-back);
+            margin-bottom: 2px;
+        }
+
+        .keyword, .node select {
+            font: inherit;
+            font-size: 1.15rem;
+            font-weight: 600;
+            width: 100%;
+            border: none;
+            border-bottom: 1px solid #ddd;
+            background: transparent;
+            color: var(--text-color);
+            padding: 4px 0;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 520px) {
+            .node select { font-size: 1rem; }
+        }
+
+        .map-dock {
+            background: var(--bg-color);
+            padding-top: 6px;
+        }
+
+        .fix-label {
+            display: block;
+            text-align: left;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--card-back);
+            margin-top: 8px;
+        }
+
+        .btn:focus-visible,
+        .stage-btn:focus-visible,
+        .mini:focus-visible,
+        .keyword:focus-visible,
+        .card-source:focus-visible,
+        .node select:focus-visible {
+            outline: 2px solid var(--accent-color);
+            outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .card, .stage-shell, .stage-bar { transition: none; }
         }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <h1>Topic Draw Challenge</h1>
-    <p class="rules">Tap the card to reveal a topic. You must talk for 40 seconds without stopping. If you run out of things to say, say <strong>"which means..."</strong> and keep going!</p>
+    <h1>English: practice</h1>
 
-    <div class="card-container" id="cardContainer">
-        <div class="card" id="card">
-            <div class="card-face card-back">
-                <div class="card-back-pattern">TAP TO DRAW TOPIC</div>
-            </div>
-            <div class="card-face card-front" id="topicText">
-                Topic goes here
+    <nav class="stage-nav" aria-label="Practice">
+        <button type="button" class="stage-btn active" data-stage="phrases">Bridge phrases</button>
+        <button type="button" class="stage-btn" data-stage="chain">Chain drill</button>
+        <button type="button" class="stage-btn" data-stage="map">Speech map</button>
+    </nav>
+
+    <section id="panel-phrases">
+        <h2>Bridge phrases</h2>
+        <div class="sheet">
+            <ol id="phraseList"></ol>
+        </div>
+        <div class="timer-circle" id="phraseCircle">2:00</div>
+        <div class="actions">
+            <button type="button" class="btn" id="phraseStartBtn">Start 2 minutes</button>
+        </div>
+    </section>
+
+    <section id="panel-chain" hidden>
+        <h2>Chain drill</h2>
+        <div id="sourceBox" hidden>
+            <textarea class="card-source" id="cardSource" rows="9" spellcheck="true" autocomplete="off" placeholder="The reef&#10;Tasmania&#10;Gold Coast" aria-label="One card on each line"></textarea>
+            <div class="actions">
+                <button type="button" class="btn" id="makeBtn">Make cards</button>
+                <button type="button" class="btn ghost" id="cancelEditBtn" hidden>Keep these cards</button>
             </div>
         </div>
-    </div>
+        <div class="deck" id="deck" aria-label="Face-down cards"></div>
+        <p class="tally" id="tally" aria-live="polite">Reason bridges: 0</p>
+        <div class="timer-circle" id="talkCircle">20</div>
+        <div class="actions">
+            <button type="button" class="btn ghost tick" id="tickBtn" hidden>Tick — reason</button>
+            <button type="button" class="btn" id="startTalkBtn" hidden>Start 20 seconds</button>
+            <button type="button" class="btn ghost" id="editBtn">Change the cards</button>
+            <button type="button" class="btn ghost" id="reshuffleBtn" hidden>New order</button>
+        </div>
+    </section>
 
-    <div class="timer-container" id="timerContainer">
-        <div class="timer-circle" id="timerDisplay">40</div>
-        <button class="btn" id="nextBtn" disabled>Next Topic</button>
+    <section id="panel-map" hidden>
+        <h2>Speech map</h2>
+        <div class="map">
+            <div class="node">
+                <label for="mapStart">Start</label>
+                <input class="keyword" id="mapStart" maxlength="48" autocomplete="off">
+            </div>
+            <div class="node">
+                <label for="point1">Point 1</label>
+                <select id="point1"></select>
+            </div>
+            <div class="node bridge">
+                <label for="bridge1">Bridge</label>
+                <select id="bridge1"></select>
+            </div>
+            <div class="node">
+                <label for="point2">Point 2</label>
+                <select id="point2"></select>
+            </div>
+            <div class="node bridge">
+                <label for="bridge2">Bridge</label>
+                <select id="bridge2"></select>
+            </div>
+            <div class="node">
+                <label for="point3">Point 3</label>
+                <select id="point3"></select>
+            </div>
+            <div class="node">
+                <label for="mapCloser">Closer</label>
+                <input class="keyword" id="mapCloser" maxlength="48" autocomplete="off">
+            </div>
+        </div>
+        <div class="map-dock">
+            <div class="timer-circle" id="mapCircle">90</div>
+            <div class="actions">
+                <button type="button" class="btn" id="mapStartBtn">Deliver · 90 seconds</button>
+                <div id="fixBox" hidden>
+                    <label class="fix-label" for="fixNote">One fix
+                        <input class="keyword" id="fixNote" maxlength="80" autocomplete="off" placeholder="Name it in a few words">
+                    </label>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div class="overlay" id="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="stageText">
+    <button type="button" class="overlay-hit" id="overlayHit" aria-label="Put the card back"></button>
+    <div class="stage-shell" id="stageShell">
+        <div class="card" id="stageCard">
+            <div class="card-face card-back">
+                <div class="card-back-pattern"></div>
+            </div>
+            <div class="card-face card-front" id="stageText" aria-live="polite"></div>
+        </div>
+    </div>
+    <div class="stage-bar">
+        <div class="timer-circle" id="stageCircle">20</div>
+        <div class="actions">
+            <button type="button" class="btn ghost tick" id="stageTick" hidden>Tick — reason</button>
+            <button type="button" class="btn" id="stageStart" hidden>Start 20 seconds</button>
+            <button type="button" class="btn ghost" id="closeCardBtn">Put the card back</button>
+        </div>
     </div>
 </div>
 
 <script>
-    const topics = [
-        "What would the effects be?",
-        "Why should/shouldn't Austrlians stop travelling?",
-        "Reasons Australians love to travel overseas.",
-        "What problems does travel cause?",
-        "Why does flying from Australia have a bigger impact than a short trip somewhere closer?",
-        "A way to travel that does less harm.",
-        "Who would lose out most if everyone stopped travelling?",
-        "Should travel be a right or a privilege?",
-        "What a tourist should do to be respectful?",
-        "What Australians could do instead of going overseas?"
-    ];
+    "use strict";
 
-    let remainingTopics = [...topics];
-    let timerInterval = null;
-    let timeLeft = 40;
-    let isFlipped = false;
+    const PHRASE_SECONDS = 2 * 60;
+    const TALK_SECONDS = 20;
+    const MAP_SECONDS = 90;
 
-    const card = document.getElementById('card');
-    const cardContainer = document.getElementById('cardContainer');
-    const topicText = document.getElementById('topicText');
-    const timerContainer = document.getElementById('timerContainer');
-    const timerDisplay = document.getElementById('timerDisplay');
-    const nextBtn = document.getElementById('nextBtn');
+    const stageButtons = document.querySelectorAll(".stage-btn");
+    const phraseCircle = document.getElementById("phraseCircle");
+    const phraseStartBtn = document.getElementById("phraseStartBtn");
+    const sourceBox = document.getElementById("sourceBox");
+    const cardSource = document.getElementById("cardSource");
+    const deck = document.getElementById("deck");
+    const tally = document.getElementById("tally");
+    const talkCircle = document.getElementById("talkCircle");
+    const tickBtn = document.getElementById("tickBtn");
+    const startTalkBtn = document.getElementById("startTalkBtn");
+    const editBtn = document.getElementById("editBtn");
+    const cancelEditBtn = document.getElementById("cancelEditBtn");
+    const reshuffleBtn = document.getElementById("reshuffleBtn");
+    const overlay = document.getElementById("overlay");
+    const stageShell = document.getElementById("stageShell");
+    const stageCard = document.getElementById("stageCard");
+    const stageText = document.getElementById("stageText");
+    const stageCircle = document.getElementById("stageCircle");
+    const stageTick = document.getElementById("stageTick");
+    const stageStart = document.getElementById("stageStart");
+    const closeCardBtn = document.getElementById("closeCardBtn");
+    const mapCircle = document.getElementById("mapCircle");
+    const mapStartBtn = document.getElementById("mapStartBtn");
+    const fixBox = document.getElementById("fixBox");
 
-    function shuffleArray(array) {
+    const state = {
+        stage: "phrases",
+        phraseLeft: PHRASE_SECONDS,
+        phraseRunning: false,
+        deck: [],
+        order: [],
+        seen: [],
+        sourceOpen: false,
+        openIndex: -1,
+        activeIndex: -1,
+        activeIsBridge: false,
+        animating: false,
+        closing: false,
+        talkLeft: TALK_SECONDS,
+        talkPhase: "idle",
+        bridgeMarked: false,
+        due: 0,
+        ticked: 0,
+        mapRuns: 0
+    };
+
+    let motion = 0;
+
+    function shuffle(list) {
+        const array = list.slice();
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [array[i], array[j]] = [array[j], array[i]];
         }
+        return array;
     }
 
-    function startTimer() {
-        clearInterval(timerInterval);
-        timeLeft = 40;
-        timerDisplay.textContent = timeLeft;
-        timerDisplay.className = 'timer-circle running';
-        nextBtn.disabled = true;
+    function formatTime(total) {
+        const minutes = Math.floor(total / 60);
+        const seconds = total % 60;
+        return minutes + ":" + String(seconds).padStart(2, "0");
+    }
 
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            timerDisplay.textContent = timeLeft;
+    function fillSelect(id, items, selectedIndex) {
+        const select = document.getElementById(id);
+        items.forEach((item, index) => {
+            const option = document.createElement("option");
+            option.value = item;
+            option.textContent = item;
+            option.selected = index === selectedIndex;
+            select.appendChild(option);
+        });
+    }
 
-            if (timeLeft <= 0) {
-                clearInterval(timerInterval);
-                timerDisplay.className = 'timer-circle finished';
-                nextBtn.disabled = false;
+    function refillSelect(id, items, fallbackIndex) {
+        const select = document.getElementById(id);
+        const previous = select.value;
+        select.replaceChildren();
+        items.forEach((item) => {
+            const option = document.createElement("option");
+            option.value = item;
+            option.textContent = item;
+            select.appendChild(option);
+        });
+        if (previous && items.includes(previous)) select.value = previous;
+        else if (items.length) select.selectedIndex = Math.min(fallbackIndex, items.length - 1);
+    }
+
+    function linesFrom(text) {
+        return text.split(/\r?\n/).map((line) => {
+            return line.trim().replace(/^(?:[-*•]|\d+[.)])\s+/, "");
+        }).filter(Boolean);
+    }
+
+    function hideOverlay() {
+        overlay.hidden = true;
+        overlay.classList.remove("open");
+        document.body.classList.remove("card-open");
+        stageCard.classList.remove("flipped");
+    }
+
+    function enterStage(name) {
+        if (name !== state.stage) {
+            if (state.stage === "map" && state.talkPhase === "running") {
+                state.mapRuns = Math.max(0, state.mapRuns - 1);
             }
-        }, 1000);
-    }
-
-    function handleCardClick() {
-        if (isFlipped) return;
-
-        if (remainingTopics.length === 0) {
-            remainingTopics = [...topics];
+            state.talkPhase = "idle";
+            if (state.stage === "chain" && state.openIndex >= 0) {
+                motion += 1;
+                state.animating = false;
+                state.closing = false;
+                state.openIndex = -1;
+                hideOverlay();
+            }
         }
-        
-        // Pick and remove a random topic
-        const randomIndex = Math.floor(Math.random() * remainingTopics.length);
-        const selectedTopic = remainingTopics.splice(randomIndex, 1)[0];
-        
-        topicText.textContent = selectedTopic;
-        
-        // Flip card and show timer framework
-        card.classList.add('flipped');
-        timerContainer.classList.add('visible');
-        isFlipped = true;
-
-        // Brief delay for flipping animation before timer starts
-        setTimeout(startTimer, 400);
+        state.stage = name;
+        paint();
     }
 
-    function handleNextClick() {
-        clearInterval(timerInterval);
-        card.classList.remove('flipped');
-        timerContainer.classList.remove('visible');
-        timerDisplay.className = 'timer-circle';
-        timerDisplay.textContent = '40';
-        isFlipped = false;
+    function beginTalk(seconds) {
+        state.talkLeft = seconds;
+        state.talkPhase = "running";
+        paint();
     }
 
-    // Initial shuffle
-    shuffleArray(remainingTopics);
+    function paint() {
+        stageButtons.forEach((button) => {
+            button.classList.toggle("active", button.dataset.stage === state.stage);
+        });
 
-    // Event Listeners
-    cardContainer.addEventListener('click', handleCardClick);
-    nextBtn.addEventListener('click', handleNextClick);
+        ["phrases", "chain", "map"].forEach((key) => {
+            document.getElementById("panel-" + key).hidden = key !== state.stage;
+        });
+
+        const phraseLeft = state.phraseLeft;
+        const phraseDone = !state.phraseRunning && phraseLeft === 0;
+        phraseCircle.textContent = formatTime(phraseLeft);
+        phraseCircle.className = "timer-circle" +
+            (state.phraseRunning && phraseLeft > 0 ? " running" : phraseDone ? " finished" : "");
+        phraseStartBtn.disabled = state.phraseRunning && phraseLeft > 0;
+        phraseStartBtn.textContent = phraseDone ? "Start again" : "Start 2 minutes";
+
+        sourceBox.hidden = !state.sourceOpen;
+        deck.hidden = state.sourceOpen;
+        editBtn.hidden = state.sourceOpen;
+        cancelEditBtn.hidden = !state.sourceOpen || state.deck.length === 0;
+
+        const faceDown = state.seen.filter((used) => !used).length;
+
+        tally.textContent = state.due === 0
+            ? "Reason bridges: 0"
+            : "Reason bridges: " + state.ticked + " / " + state.due;
+
+        const bridgeControls = state.activeIsBridge && state.activeIndex >= 0;
+        const waitingForBridge = bridgeControls && state.talkPhase === "idle";
+        const onActiveCard = state.openIndex >= 0 && state.openIndex === state.activeIndex;
+        paintTick(tickBtn, bridgeControls && state.openIndex < 0 && !state.sourceOpen);
+        paintTick(stageTick, bridgeControls && onActiveCard);
+        startTalkBtn.hidden = !(waitingForBridge && state.openIndex < 0 && !state.sourceOpen);
+        stageStart.hidden = !(waitingForBridge && onActiveCard);
+        const allTurned = state.deck.length > 0 && faceDown === 0;
+        reshuffleBtn.hidden = !(allTurned && state.openIndex < 0 && !state.sourceOpen);
+
+        const talkDone = state.talkPhase === "done";
+        const talkRunning = state.talkPhase === "running";
+        const chainTiming = state.stage === "chain" && state.activeIndex >= 0;
+        [talkCircle, stageCircle].forEach((circle) => {
+            circle.textContent = chainTiming && state.talkPhase !== "idle"
+                ? String(state.talkLeft)
+                : String(TALK_SECONDS);
+            circle.className = "timer-circle" +
+                (chainTiming && talkRunning ? " running" : chainTiming && talkDone ? " finished" : "");
+        });
+        talkCircle.hidden = state.sourceOpen;
+
+        const onMapTalk = state.stage === "map" && state.talkPhase !== "idle";
+        mapCircle.textContent = onMapTalk ? String(state.talkLeft) : String(MAP_SECONDS);
+        mapCircle.className = "timer-circle" +
+            (state.stage === "map" && talkRunning ? " running" : state.stage === "map" && talkDone ? " finished" : "");
+        mapStartBtn.disabled = state.stage === "map" && talkRunning;
+        mapStartBtn.textContent = talkRunning && state.stage === "map"
+            ? "Speaking…"
+            : state.mapRuns >= 1 ? "Say it again" : "Deliver · 90 seconds";
+
+        const showFix = state.mapRuns >= 1 && (state.talkPhase !== "running" || state.mapRuns >= 2);
+        fixBox.hidden = !showFix;
+    }
+
+    function paintTick(button, visible) {
+        button.hidden = !visible;
+        button.disabled = false;
+        button.classList.toggle("done", state.bridgeMarked);
+        button.textContent = state.bridgeMarked ? "Ticked" : "Tick — reason";
+        button.setAttribute("aria-pressed", state.bridgeMarked ? "true" : "false");
+    }
+
+    function renderDeck() {
+        deck.replaceChildren();
+        state.order.forEach((cardIndex) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "mini" + (state.seen[cardIndex] ? " used" : "");
+            button.dataset.index = String(cardIndex);
+            button.setAttribute("aria-label", state.seen[cardIndex] ? "Used card, face down" : "Face-down card");
+            const back = document.createElement("span");
+            back.className = "mini-back";
+            const pattern = document.createElement("span");
+            pattern.className = "card-back-pattern";
+            back.appendChild(pattern);
+            button.appendChild(back);
+            button.addEventListener("click", () => openCard(cardIndex, button));
+            deck.appendChild(button);
+        });
+    }
+
+    function place(box) {
+        stageShell.style.left = box.left + "px";
+        stageShell.style.top = box.top + "px";
+        stageShell.style.width = box.width + "px";
+        stageShell.style.height = box.height + "px";
+    }
+
+    function finalBox() {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const barSpace = 200;
+        const width = Math.round(Math.min(vw - 32, 840));
+        const height = Math.round(Math.min(vh - barSpace - 24, 560));
+        return {
+            left: Math.round((vw - width) / 2),
+            top: Math.round(Math.max(12, (vh - barSpace - height) / 2)),
+            width: width,
+            height: Math.max(200, height)
+        };
+    }
+
+    function flyOpen(fromRect) {
+        const ticket = ++motion;
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const to = finalBox();
+        stageCard.classList.remove("flipped");
+        overlay.hidden = false;
+        document.body.classList.add("card-open");
+        overlay.classList.add("open");
+        if (reduce || !fromRect || fromRect.width < 2) {
+            stageShell.style.transition = "none";
+            place(to);
+            stageCard.classList.add("flipped");
+            closeCardBtn.focus();
+            return;
+        }
+        state.animating = true;
+        stageShell.style.transition = "none";
+        place({
+            left: fromRect.left,
+            top: fromRect.top,
+            width: fromRect.width,
+            height: fromRect.height
+        });
+        void stageShell.offsetWidth;
+        stageShell.style.transition = "left 0.42s cubic-bezier(0.2, 0.75, 0.2, 1), top 0.42s cubic-bezier(0.2, 0.75, 0.2, 1), width 0.42s cubic-bezier(0.2, 0.75, 0.2, 1), height 0.42s cubic-bezier(0.2, 0.75, 0.2, 1)";
+        place(to);
+        window.setTimeout(() => {
+            if (ticket !== motion) return;
+            stageCard.classList.add("flipped");
+        }, 80);
+        window.setTimeout(() => {
+            if (ticket !== motion) return;
+            state.animating = false;
+        }, 430);
+        closeCardBtn.focus();
+    }
+
+    function finishClose() {
+        const returnIndex = state.openIndex;
+        state.openIndex = -1;
+        hideOverlay();
+        paint();
+        const mini = deck.querySelector('[data-index="' + returnIndex + '"]');
+        if (mini && state.stage === "chain" && !state.sourceOpen) mini.focus();
+    }
+
+    function closeCard() {
+        if (state.openIndex < 0 || state.closing) return;
+        const cardIndex = state.openIndex;
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const mini = deck.querySelector('[data-index="' + cardIndex + '"]');
+        const ticket = ++motion;
+        stageCard.classList.remove("flipped");
+        if (reduce || !mini) {
+            state.animating = false;
+            finishClose();
+            return;
+        }
+        state.closing = true;
+        state.animating = true;
+        const back = mini.getBoundingClientRect();
+        place({ left: back.left, top: back.top, width: back.width, height: back.height });
+        window.setTimeout(() => {
+            if (ticket !== motion) return;
+            state.closing = false;
+            state.animating = false;
+            finishClose();
+        }, 430);
+    }
+
+    function openCard(cardIndex, fromEl) {
+        if (state.animating || state.closing) return;
+        const fromRect = fromEl.getBoundingClientRect();
+        const firstTime = !state.seen[cardIndex];
+        if (firstTime) {
+            const anySeen = state.seen.some(Boolean);
+            state.seen[cardIndex] = true;
+            state.activeIndex = cardIndex;
+            state.activeIsBridge = anySeen;
+            state.bridgeMarked = false;
+            state.talkPhase = "idle";
+            state.talkLeft = TALK_SECONDS;
+            if (anySeen) state.due += 1;
+            else state.talkPhase = "running";
+        }
+        state.openIndex = cardIndex;
+        stageText.textContent = state.deck[cardIndex];
+        renderDeck();
+        flyOpen(fromRect);
+        paint();
+    }
+
+    function makeCards() {
+        const cards = linesFrom(cardSource.value);
+        motion += 1;
+        state.animating = false;
+        state.closing = false;
+        state.openIndex = -1;
+        state.activeIndex = -1;
+        state.activeIsBridge = false;
+        state.bridgeMarked = false;
+        state.talkPhase = "idle";
+        state.talkLeft = TALK_SECONDS;
+        hideOverlay();
+        if (!cards.length) {
+            state.deck = [];
+            state.order = [];
+            state.seen = [];
+            state.due = 0;
+            state.ticked = 0;
+            state.sourceOpen = true;
+            renderDeck();
+            paint();
+            return;
+        }
+        state.deck = cards;
+        state.order = shuffle(cards.map((_, index) => index));
+        state.seen = cards.map(() => false);
+        state.due = 0;
+        state.ticked = 0;
+        state.sourceOpen = false;
+        refillSelect("point1", cards, 0);
+        refillSelect("point2", cards, 1);
+        refillSelect("point3", cards, Math.min(6, cards.length - 1));
+        renderDeck();
+        paint();
+    }
+
+    function newOrder() {
+        if (!state.deck.length) return;
+        motion += 1;
+        state.order = shuffle(state.deck.map((_, index) => index));
+        state.seen = state.deck.map(() => false);
+        state.openIndex = -1;
+        state.activeIndex = -1;
+        state.activeIsBridge = false;
+        state.bridgeMarked = false;
+        state.talkPhase = "idle";
+        state.talkLeft = TALK_SECONDS;
+        state.animating = false;
+        state.closing = false;
+        hideOverlay();
+        renderDeck();
+        paint();
+    }
+
+    function openEditor() {
+        cardSource.value = state.deck.join("\n");
+        state.sourceOpen = true;
+        if (state.openIndex >= 0) {
+            motion += 1;
+            state.animating = false;
+            state.closing = false;
+            state.openIndex = -1;
+            hideOverlay();
+        }
+        paint();
+        cardSource.focus();
+    }
+
+    function cancelEdit() {
+        cardSource.value = state.deck.join("\n");
+        state.sourceOpen = false;
+        paint();
+    }
+
+    function onTick() {
+        if (!state.activeIsBridge) return;
+        if (state.bridgeMarked) {
+            state.bridgeMarked = false;
+            state.ticked = Math.max(0, state.ticked - 1);
+        } else {
+            state.bridgeMarked = true;
+            state.ticked += 1;
+        }
+        paint();
+    }
+
+    function onStartTalk() {
+        if (!state.activeIsBridge || state.talkPhase !== "idle") return;
+        beginTalk(TALK_SECONDS);
+    }
+
+    function onMapStart() {
+        if (state.talkPhase === "running") return;
+        state.mapRuns += 1;
+        beginTalk(MAP_SECONDS);
+    }
+
+    function startPhrases() {
+        if (state.phraseRunning && state.phraseLeft > 0) return;
+        state.phraseLeft = PHRASE_SECONDS;
+        state.phraseRunning = true;
+        paint();
+    }
+
+    function tickClock() {
+        let changed = false;
+        if (state.stage === "phrases" && state.phraseRunning && state.phraseLeft > 0) {
+            state.phraseLeft -= 1;
+            if (state.phraseLeft === 0) state.phraseRunning = false;
+            changed = true;
+        }
+        if (state.talkPhase === "running") {
+            if (state.talkLeft > 0) state.talkLeft -= 1;
+            if (state.talkLeft <= 0) state.talkPhase = "done";
+            changed = true;
+        }
+        if (changed) paint();
+    }
+
+    const phraseList = document.getElementById("phraseList");
+    PHRASES.forEach((phrase) => {
+        const item = document.createElement("li");
+        item.textContent = phrase;
+        phraseList.appendChild(item);
+    });
+    document.getElementById("mapStart").value = MAP_START;
+    document.getElementById("mapCloser").value = MAP_CLOSER;
+    fillSelect("bridge1", PHRASES, Math.min(2, PHRASES.length - 1));
+    fillSelect("bridge2", PHRASES, Math.min(3, PHRASES.length - 1));
+    cardSource.value = CARDS.join("\n");
+    makeCards();
+
+    phraseStartBtn.addEventListener("click", startPhrases);
+    stageButtons.forEach((button) => {
+        button.addEventListener("click", () => enterStage(button.dataset.stage));
+    });
+    document.getElementById("makeBtn").addEventListener("click", makeCards);
+    editBtn.addEventListener("click", openEditor);
+    cancelEditBtn.addEventListener("click", cancelEdit);
+    tickBtn.addEventListener("click", onTick);
+    stageTick.addEventListener("click", onTick);
+    startTalkBtn.addEventListener("click", onStartTalk);
+    stageStart.addEventListener("click", onStartTalk);
+    reshuffleBtn.addEventListener("click", newOrder);
+    closeCardBtn.addEventListener("click", closeCard);
+    document.getElementById("overlayHit").addEventListener("click", closeCard);
+    cardSource.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            makeCards();
+        }
+    });
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && state.openIndex >= 0) {
+            event.preventDefault();
+            closeCard();
+        }
+    });
+    window.addEventListener("resize", () => {
+        if (state.openIndex >= 0 && !state.closing) place(finalBox());
+    });
+    mapStartBtn.addEventListener("click", onMapStart);
+    window.setInterval(tickClock, 1000);
 </script>
-
 </body>
 </html>
